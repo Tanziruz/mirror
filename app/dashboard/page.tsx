@@ -51,7 +51,7 @@ export default function DashboardPage() {
             <h1 className="mt-2 text-3xl font-bold text-white tracking-tight">Daily Sync</h1>
           </div>
           <DailyLogForm
-            onSubmit={async ({ mood, goalStatus, decisionMade, notes, timeSpent, commentary }) => {
+            onSubmit={async ({ mood, goalStatus, decisionMade, notes, timeSpent }) => {
               setIsLoading(true);
               try {
                 const response = await fetch("/api/divergence", {

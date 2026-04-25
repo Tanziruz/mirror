@@ -40,9 +40,13 @@ export function useMirrorStore() {
 
   useEffect(() => {
     const storedLogs = readStorage<DailyLog[]>(LOGS_KEY, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLogs(storedLogs.length > 0 ? storedLogs : initialLogs);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDecisions(readStorage<StoredShadowDecision[]>(DECISIONS_KEY, []));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPersona(readStorage<TwinPersona | null>(PERSONA_KEY, null));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHydrated(true);
   }, []);
 

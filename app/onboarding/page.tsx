@@ -70,6 +70,7 @@ export default function OnboardingPage() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -78,12 +79,15 @@ export default function OnboardingPage() {
     if (saved) {
       const parsed = JSON.parse(saved) as { step?: number; answers?: OnboardingAnswers; fileName?: string | null };
       if (parsed.answers) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setAnswers(parsed.answers);
       }
       if (typeof parsed.step === "number") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStep(parsed.step);
       }
       if (typeof parsed.fileName === "string") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setFileName(parsed.fileName);
       }
     }

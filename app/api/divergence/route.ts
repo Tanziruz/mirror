@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { generateGeminiText } from "@/lib/ai/client";
 import { DIVERGENCE_SCORE_PROMPT } from "@/lib/ai/prompts";
 import { buildDemoPersona } from "@/lib/twin";
-import type { DailyLog } from "@/types";
+import type { DailyLog, TwinPersona } from "@/types";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { logData?: Partial<DailyLog>; persona?: any };
+    const body = (await request.json()) as { logData?: Partial<DailyLog>; persona?: TwinPersona };
     const logData = body.logData ?? {};
     
     // In a real app, we'd fetch the user's persona. For the demo, we use a default or build one.
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     
     // Default fallback values
     const moodScore = logData.mood ? 100 - (logData.mood * 20) : 50;
-    let result = { 
+    const result = {
       divergence_score: Math.max(0, Math.min(100, Math.round(moodScore))), 
       commentary: "I see your patterns. Your mood and choices are creating a specific trajectory. Keep logging to sharpen the reflection." 
     };
@@ -35,9 +35,15 @@ export async function POST(request: Request) {
         // Extract JSON from response (sometimes Gemini wraps it in code blocks)
         const jsonMatch = response.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.divergence_score !== undefined) result.divergence_score = parsed.divergence_score;
-          if (parsed.commentary) result.commentary = parsed.commentary;
+          const parsed = JSON.parse(jsonMatch[0]) as { divergence_score?: number; commentary?: string };
+          return NextResponse.json({
+            divergence_score:
+              parsed.divergence_score !== undefined
+                ? Math.max(0, Math.min(100, Math.round(parsed.divergence_score)))
+                : result.divergence_score,
+            commentary: parsed.commentary || result.commentary,
+            logId: crypto.randomUUID(),
+          });
         }
       } catch (e) {
         console.error("Failed to parse Gemini response:", e);

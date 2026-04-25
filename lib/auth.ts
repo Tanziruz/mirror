@@ -149,7 +149,7 @@ export async function signIn(
 export async function signInWithGoogle(): Promise<SignInResponse> {
   try {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${getAuthCallbackUrl()}?next=/dashboard`,

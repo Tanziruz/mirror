@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { recoverSessionFromUrlHash } from "@/lib/auth";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     let isMounted = true;
 
     const completeOAuth = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
       const code = searchParams.get("code");
       const next = searchParams.get("next") || "/dashboard";
       const oauthError = searchParams.get("error");
@@ -70,7 +70,7 @@ export default function AuthCallbackPage() {
     return () => {
       isMounted = false;
     };
-  }, [router, searchParams]);
+  }, [router]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6">

@@ -5,48 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { BehaviorTimeline } from "@/components/timeline/BehaviorTimeline";
 import { ProjectedSelfCard } from "@/components/timeline/ProjectedSelfCard";
 import { useMirrorStore } from "@/hooks/useMirrorStore";
-import type { DailyLog } from "@/types";
-import { useMemo, useState , useEffect} from "react";
-
-
-const logs: DailyLog[] = [
-  {
-    id: "1",
-    user_id: "demo",
-    log_date: "2026-04-20",
-    mood: 3,
-    decision_made: "Skipped a boundary-setting conversation",
-    time_spent: [{ activity: "Work", hours: 6 }],
-    goal_status: "behind",
-    notes: "I kept moving instead of deciding.",
-    divergence_score: 38,
-    twin_commentary: "You called it busyness, but it was really delay dressed as momentum.",
-  },
-  {
-    id: "2",
-    user_id: "demo",
-    log_date: "2026-04-21",
-    mood: 2,
-    decision_made: "Accepted another task I did not want",
-    time_spent: [{ activity: "Meetings", hours: 5 }],
-    goal_status: "behind",
-    notes: "Said yes too fast.",
-    divergence_score: 61,
-    twin_commentary: "You keep outsourcing your own limits. That has a cost.",
-  },
-  {
-    id: "3",
-    user_id: "demo",
-    log_date: "2026-04-22",
-    mood: 4,
-    decision_made: "Protected a block of deep work",
-    time_spent: [{ activity: "Focus work", hours: 3 }],
-    goal_status: "on_track",
-    notes: "Felt cleaner after saying no.",
-    divergence_score: 24,
-    twin_commentary: "This was closer to the person you keep describing. Notice how calm that felt.",
-  },
-];
+import { useEffect, useState } from "react";
 
 export default function TimelinePage() {
   const { logs, hydrated } = useMirrorStore();

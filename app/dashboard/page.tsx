@@ -8,6 +8,7 @@ import { DivergenceGauge } from "@/components/dashboard/DivergenceGauge";
 import { TwinTakePanel } from "@/components/dashboard/TwinTakePanel";
 import { formatDateLabel } from "@/lib/utils";
 import { useMirrorStore } from "@/hooks/useMirrorStore";
+import type { DailyLog } from "@/types";
 import { useMemo, useState } from "react";
 
 export default function DashboardPage() {

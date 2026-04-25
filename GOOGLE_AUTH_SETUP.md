@@ -56,7 +56,9 @@ Click the **Google** button to test the OAuth flow.
 ## Important Notes
 
 - The redirect URI must match exactly what's configured in Google Cloud
-- For local development, you might need to add `http://localhost:3000/auth/callback` as well
+- For local development, add both callback URLs in Supabase redirect allow list:
+   - `http://localhost:3000/auth/callback`
+   - `http://localhost:3000/auth/v1/callback`
 - Google OAuth will work for both login and signup flows
 - Sessions are automatically managed through Supabase Auth
 

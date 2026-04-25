@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { onAuthStateChange, getSession } from "@/lib/auth";
+import { onAuthStateChange, getSession, recoverSessionFromUrlHash } from "@/lib/auth";
 
 interface AuthContextType {
   user: User | null;
@@ -21,10 +21,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // First, check if there's an existing session (from localStorage after OAuth)
     const initializeSession = async () => {
+      const recovered = await recoverSessionFromUrlHash();
+      if (recovered.error) {
+        console.error("OAuth session recovery failed:", recovered.error);
+      }
+
       const session = await getSession();
       if (session?.user) {
         setUser(session.user);
         setSession(session);
+
+        const path = window.location.pathname;
+        const shouldRedirectToDashboard = path === "/" || path === "/login" || path === "/signup";
+        if (shouldRedirectToDashboard) {
+          window.location.replace("/dashboard");
+          return;
+        }
       }
       setLoading(false);
     };

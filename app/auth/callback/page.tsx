@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { recoverSessionFromUrlHash } from "@/lib/auth";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -23,18 +24,30 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      if (!code) {
-        router.replace("/login?error=Missing%20authorization%20code");
-        return;
-      }
-
       let errorMessage: string | null = null;
 
       try {
         const supabase = getSupabaseClient();
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          errorMessage = error.message;
+        const recovered = await recoverSessionFromUrlHash();
+        if (recovered.error) {
+          errorMessage = recovered.error;
+        }
+
+        if (!errorMessage && code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            errorMessage = error.message;
+          }
+        }
+
+        if (!errorMessage && !code && !recovered.recovered) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!session) {
+            errorMessage = "Missing authorization code";
+          }
         }
       } catch (error) {
         errorMessage = error instanceof Error ? error.message : "Failed to complete OAuth sign in";

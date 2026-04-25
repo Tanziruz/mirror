@@ -17,6 +17,11 @@ export interface SignInResponse extends AuthResponse {
   session?: Session;
 }
 
+interface HashSessionRecoveryResult {
+  recovered: boolean;
+  error?: string;
+}
+
 function getAuthCallbackUrl() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const baseUrl = siteUrl?.replace(/\/+$/, "") || (typeof window !== "undefined" ? window.location.origin : "");
@@ -26,6 +31,51 @@ function getAuthCallbackUrl() {
   }
 
   return `${baseUrl}/auth/callback`;
+}
+
+export async function recoverSessionFromUrlHash(): Promise<HashSessionRecoveryResult> {
+  if (typeof window === "undefined") {
+    return { recovered: false };
+  }
+
+  const rawHash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+  if (!rawHash) {
+    return { recovered: false };
+  }
+
+  const params = new URLSearchParams(rawHash);
+  const accessToken = params.get("access_token");
+  const refreshToken = params.get("refresh_token");
+  const oauthError = params.get("error_description") || params.get("error");
+
+  if (oauthError) {
+    return { recovered: false, error: oauthError };
+  }
+
+  if (!accessToken || !refreshToken) {
+    return { recovered: false };
+  }
+
+  try {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    if (error) {
+      return { recovered: false, error: error.message };
+    }
+
+    const cleanUrl = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+    return { recovered: true };
+  } catch (error) {
+    return {
+      recovered: false,
+      error: error instanceof Error ? error.message : "Failed to recover session from OAuth URL",
+    };
+  }
 }
 
 /**
@@ -102,7 +152,7 @@ export async function signInWithGoogle(): Promise<SignInResponse> {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: getAuthCallbackUrl(),
+        redirectTo: `${getAuthCallbackUrl()}?next=/dashboard`,
         queryParams: {
           prompt: "select_account",
         },

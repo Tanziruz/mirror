@@ -21,7 +21,14 @@ export function getSupabaseClient() {
   }
 
   const { url, anonKey } = getRequiredSupabaseConfig();
-  supabaseClient = createClient(url, anonKey);
+  supabaseClient = createClient(url, anonKey, {
+    auth: {
+      flowType: "pkce",
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  });
   return supabaseClient;
 }
 

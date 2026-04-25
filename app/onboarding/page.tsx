@@ -65,6 +65,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<OnboardingAnswers>(initialAnswers);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [uploadedText, setUploadedText] = useState("");
   const [persona, setPersona] = useState<TwinPersona | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -113,7 +114,7 @@ export default function OnboardingPage() {
       const response = await fetch("/api/twin/genesis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, uploadedText: "" }), // TODO: Handle file text
+        body: JSON.stringify({ answers, uploadedText }),
       });
 
       if (!response.ok) {
@@ -124,8 +125,9 @@ export default function OnboardingPage() {
       const generatedPersona = await response.json();
       setPersona(generatedPersona);
       updatePersona(generatedPersona);
-    } catch (error: any) {
-      console.error("Failed to generate twin:", error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Failed to generate twin:", errorMessage);
       // Fallback to local build if AI fails
       const fallback = buildPersona(answers);
       setPersona(fallback);
@@ -183,7 +185,36 @@ export default function OnboardingPage() {
           </div>
           <label className="flex cursor-pointer flex-col gap-4 rounded-3xl border border-dashed border-white/15 bg-white/4 px-6 py-10 text-left transition hover:border-[var(--accent-blue)] hover:bg-white/6">
             <span className="text-sm uppercase tracking-[0.3em] text-[var(--text-secondary)]">Drop a file here or click to browse</span>
-            <Input type="file" accept=".txt,.pdf,.docx,.md" className="border-0 bg-transparent p-0 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent-blue)] file:px-4 file:py-2 file:text-white" onChange={(event) => setFileName(event.target.files?.[0]?.name ?? null)} />
+            <Input
+              type="file"
+              accept=".txt,.pdf,.docx,.md"
+              className="border-0 bg-transparent p-0 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent-blue)] file:px-4 file:py-2 file:text-white"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                setFileName(file?.name ?? null);
+
+                if (!file) {
+                  setUploadedText("");
+                  return;
+                }
+
+                const lowerName = file.name.toLowerCase();
+                const supportsTextExtraction = lowerName.endsWith(".txt") || lowerName.endsWith(".md");
+
+                if (!supportsTextExtraction) {
+                  // For binary formats, keep the filename metadata for now and skip text extraction.
+                  setUploadedText("");
+                  return;
+                }
+
+                try {
+                  const text = await file.text();
+                  setUploadedText(text.slice(0, 20000));
+                } catch {
+                  setUploadedText("");
+                }
+              }}
+            />
             {fileName ? <p className="text-sm text-white">{fileName}</p> : null}
           </label>
           <div className="flex items-center justify-between gap-4">

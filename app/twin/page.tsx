@@ -21,28 +21,42 @@ export default function TwinPage() {
     setMessages(nextMessages);
     setLoading(true);
 
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: nextMessages, recentLogs: logs.slice(-14) }),
-    });
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages, recentLogs: logs.slice(-14) }),
+      });
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let twinReply = "";
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        twinReply += decoder.decode(value, { stream: true });
+      if (!response.ok) {
+        throw new Error(`Twin chat failed with status ${response.status}`);
       }
-    }
 
-    setMessages([...nextMessages, { role: "twin", content: twinReply, timestamp: new Date().toISOString() }]);
-    setLoading(false);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let twinReply = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          twinReply += decoder.decode(value, { stream: true });
+        }
+      }
+
+      const safeReply = twinReply.trim() || "I lost the thread for a second. Ask me again in one line.";
+      setMessages([...nextMessages, { role: "twin", content: safeReply, timestamp: new Date().toISOString() }]);
+    } catch (error) {
+      const fallback = error instanceof Error ? error.message : "Twin chat failed unexpectedly";
+      setMessages([
+        ...nextMessages,
+        { role: "twin", content: `I hit a connection issue: ${fallback}. Ask me again.`, timestamp: new Date().toISOString() },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

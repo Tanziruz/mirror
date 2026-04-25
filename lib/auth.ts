@@ -1,4 +1,4 @@
-import { supabase } from "./supabase/client";
+import { getSupabaseClient } from "./supabase/client";
 import type { AuthError, Session, User } from "@supabase/supabase-js";
 
 export interface AuthResponse {
@@ -17,6 +17,17 @@ export interface SignInResponse extends AuthResponse {
   session?: Session;
 }
 
+function getAuthCallbackUrl() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const baseUrl = siteUrl?.replace(/\/+$/, "") || (typeof window !== "undefined" ? window.location.origin : "");
+
+  if (!baseUrl) {
+    return "/auth/callback";
+  }
+
+  return `${baseUrl}/auth/callback`;
+}
+
 /**
  * Sign up a new user with email and password
  */
@@ -25,11 +36,12 @@ export async function signUp(
   password: string
 ): Promise<SignUpResponse> {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: getAuthCallbackUrl(),
       },
     });
 
@@ -58,6 +70,7 @@ export async function signIn(
   password: string
 ): Promise<SignInResponse> {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -85,10 +98,14 @@ export async function signIn(
  */
 export async function signInWithGoogle(): Promise<SignInResponse> {
   try {
+    const supabase = getSupabaseClient();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getAuthCallbackUrl(),
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
 
@@ -110,6 +127,7 @@ export async function signInWithGoogle(): Promise<SignInResponse> {
  */
 export async function signOut(): Promise<AuthResponse> {
   try {
+    const supabase = getSupabaseClient();
     const { error } = await supabase.auth.signOut();
 
     if (error) {
@@ -130,6 +148,7 @@ export async function signOut(): Promise<AuthResponse> {
  */
 export async function getSession() {
   try {
+    const supabase = getSupabaseClient();
     const {
       data: { session },
       error,
@@ -151,6 +170,7 @@ export async function getSession() {
  */
 export async function getCurrentUser() {
   try {
+    const supabase = getSupabaseClient();
     const {
       data: { user },
       error,
@@ -173,6 +193,7 @@ export async function getCurrentUser() {
 export function onAuthStateChange(
   callback: (user: User | null, session: Session | null) => void
 ) {
+  const supabase = getSupabaseClient();
   return supabase.auth.onAuthStateChange((event, session) => {
     callback(session?.user ?? null, session ?? null);
   });

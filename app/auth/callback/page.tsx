@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function AuthCallbackPage() {
 
     const completeOAuth = async () => {
       const code = searchParams.get("code");
+      const next = searchParams.get("next") || "/dashboard";
       const oauthError = searchParams.get("error");
       const oauthErrorDescription = searchParams.get("error_description");
 
@@ -27,18 +28,28 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      let errorMessage: string | null = null;
+
+      try {
+        const supabase = getSupabaseClient();
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) {
+          errorMessage = error.message;
+        }
+      } catch (error) {
+        errorMessage = error instanceof Error ? error.message : "Failed to complete OAuth sign in";
+      }
 
       if (!isMounted) {
         return;
       }
 
-      if (error) {
-        router.replace(`/login?error=${encodeURIComponent(error.message)}`);
+      if (errorMessage) {
+        router.replace(`/login?error=${encodeURIComponent(errorMessage)}`);
         return;
       }
 
-      router.replace("/dashboard");
+      router.replace(next.startsWith("/") ? next : "/dashboard");
     };
 
     completeOAuth();

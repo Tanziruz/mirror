@@ -8,47 +8,7 @@ import { DivergenceGauge } from "@/components/dashboard/DivergenceGauge";
 import { TwinTakePanel } from "@/components/dashboard/TwinTakePanel";
 import { formatDateLabel } from "@/lib/utils";
 import { useMirrorStore } from "@/hooks/useMirrorStore";
-import type { DailyLog } from "@/types";
 import { useMemo, useState } from "react";
-
-const seedLogs: DailyLog[] = [
-  {
-    id: "1",
-    user_id: "demo-user",
-    log_date: "2026-04-20",
-    mood: 3,
-    decision_made: "Spent the day avoiding one hard conversation.",
-    time_spent: [{ activity: "Work", hours: 6 }],
-    goal_status: "behind",
-    notes: "I kept moving instead of deciding.",
-    divergence_score: 38,
-    twin_commentary: "You said you wanted depth, then spent the day avoiding the one hard conversation that would have created it.",
-  },
-  {
-    id: "2",
-    user_id: "demo-user",
-    log_date: "2026-04-21",
-    mood: 2,
-    decision_made: "Accepted another task I did not want.",
-    time_spent: [{ activity: "Meetings", hours: 5 }],
-    goal_status: "behind",
-    notes: "Said yes too fast.",
-    divergence_score: 62,
-    twin_commentary: "You traded clarity for momentum again. It felt productive, but it was still avoidance wearing better clothes.",
-  },
-  {
-    id: "3",
-    user_id: "demo-user",
-    log_date: "2026-04-22",
-    mood: 4,
-    decision_made: "Protected a block of deep work.",
-    time_spent: [{ activity: "Focus work", hours: 3 }],
-    goal_status: "on_track",
-    notes: "Felt cleaner after saying no.",
-    divergence_score: 44,
-    twin_commentary: "You moved closer to your values, then backed away the moment it required a firm no.",
-  },
-];
 
 export default function DashboardPage() {
   const { hydrated, logs, addLog, latestLog, persona } = useMirrorStore();
@@ -107,6 +67,10 @@ export default function DashboardPage() {
                     persona,
                   }),
                 });
+
+                if (!response.ok) {
+                  throw new Error(`Divergence request failed with status ${response.status}`);
+                }
 
                 const payload = (await response.json()) as { divergence_score: number; commentary: string; logId: string };
                 

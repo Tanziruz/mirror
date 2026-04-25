@@ -24,31 +24,54 @@ export default function DecisionsPage() {
   );
 
   const fetchDecision = async () => {
-    const response = await fetch("/api/decision", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const response = await fetch("/api/decision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dilemma,
+          recentLogs: logs.slice(-7),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Decision request failed with status ${response.status}`);
+      }
+
+      const payload = (await response.json()) as ShadowDecision & { created_at?: string };
+      const nextDecision: ShadowDecision = {
+        id: payload.id,
+        dilemma: payload.dilemma,
+        twin_recommendation: payload.twin_recommendation,
+        twin_reasoning: payload.twin_reasoning,
+        confidence: payload.confidence,
+        past_self_choice: payload.past_self_choice,
+        evolved_self_choice: payload.evolved_self_choice,
+        debate_history: payload.debate_history ?? [],
+      };
+
+      addDecision({ ...nextDecision, created_at: payload.created_at ?? new Date().toISOString() });
+      setDecision(nextDecision);
+      setSelectedDecisionId(nextDecision.id);
+      setDebateVisible(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate decision";
+      const fallbackDecision: ShadowDecision = {
+        id: crypto.randomUUID(),
         dilemma,
-        recentLogs: logs.slice(-7),
-      }),
-    });
+        twin_recommendation: "conditional",
+        twin_reasoning: `I could not complete the deep analysis (${message}). For now, do not commit until your current load is explicitly reduced.`,
+        confidence: 55,
+        past_self_choice: "Your past self would likely say yes quickly to avoid disappointing others.",
+        evolved_self_choice: "Your evolved self sets a clear scope boundary before agreeing to anything.",
+        debate_history: [],
+      };
 
-    const payload = (await response.json()) as ShadowDecision & { created_at?: string };
-    const nextDecision: ShadowDecision = {
-      id: payload.id,
-      dilemma: payload.dilemma,
-      twin_recommendation: payload.twin_recommendation,
-      twin_reasoning: payload.twin_reasoning,
-      confidence: payload.confidence,
-      past_self_choice: payload.past_self_choice,
-      evolved_self_choice: payload.evolved_self_choice,
-      debate_history: payload.debate_history ?? [],
-    };
-
-    addDecision({ ...nextDecision, created_at: payload.created_at ?? new Date().toISOString() });
-    setDecision(nextDecision);
-    setSelectedDecisionId(nextDecision.id);
-    setDebateVisible(true);
+      addDecision({ ...fallbackDecision, created_at: new Date().toISOString() });
+      setDecision(fallbackDecision);
+      setSelectedDecisionId(fallbackDecision.id);
+      setDebateVisible(true);
+    }
   };
 
   const sendDebate = async (message: string) => {
@@ -63,42 +86,69 @@ export default function DecisionsPage() {
       timestamp: new Date().toISOString(),
     };
 
-    const response = await fetch("/api/debate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userMessage: message,
-        history: [...selectedDecision.debate_history, userMessage],
-      }),
-    });
+    try {
+      const response = await fetch("/api/debate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userMessage: message,
+          history: [...selectedDecision.debate_history, userMessage],
+        }),
+      });
 
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    let twinMessage = "";
-
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        twinMessage += decoder.decode(value, { stream: true });
+      if (!response.ok) {
+        throw new Error(`Debate request failed with status ${response.status}`);
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let twinMessage = "";
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          twinMessage += decoder.decode(value, { stream: true });
+        }
+      }
+
+      const safeTwinMessage = twinMessage.trim() || "I need one sharper sentence from you. What exactly are you afraid of losing?";
+
+      const nextHistory: DebateMessage[] = [
+        ...selectedDecision.debate_history,
+        userMessage,
+        { role: "twin", content: safeTwinMessage, timestamp: new Date().toISOString() },
+      ];
+
+      updateDecisionHistory(selectedDecision.id, nextHistory);
+      setDecision((current) =>
+        current && current.id === selectedDecision.id
+          ? { ...current, debate_history: nextHistory }
+          : current,
+      );
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : "Debate failed";
+      const nextHistory: DebateMessage[] = [
+        ...selectedDecision.debate_history,
+        userMessage,
+        {
+          role: "twin",
+          content: `I hit a connection issue (${messageText}). Send that again and I will respond directly.`,
+          timestamp: new Date().toISOString(),
+        },
+      ];
+
+      updateDecisionHistory(selectedDecision.id, nextHistory);
+      setDecision((current) =>
+        current && current.id === selectedDecision.id
+          ? { ...current, debate_history: nextHistory }
+          : current,
+      );
+    } finally {
+      setDebateLoading(false);
     }
-
-    const nextHistory: DebateMessage[] = [
-      ...selectedDecision.debate_history,
-      userMessage,
-      { role: "twin", content: twinMessage, timestamp: new Date().toISOString() },
-    ];
-
-    updateDecisionHistory(selectedDecision.id, nextHistory);
-    setDecision((current) =>
-      current && current.id === selectedDecision.id
-        ? { ...current, debate_history: nextHistory }
-        : current,
-    );
-    setDebateLoading(false);
   };
 
   return (
